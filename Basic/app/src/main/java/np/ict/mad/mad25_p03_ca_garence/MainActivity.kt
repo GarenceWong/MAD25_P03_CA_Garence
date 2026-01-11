@@ -42,6 +42,7 @@ fun GameInterface() {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(top = 44.dp)
                     .padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -60,6 +61,7 @@ fun GameInterface() {
                 .fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Spacer(modifier = Modifier.height(250.dp))
             MoleGrid(
                 onHoleClick = { }
             )
@@ -73,9 +75,10 @@ fun MoleGrid(onHoleClick: (Int) -> Unit) {
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(80.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
     ) {
         items(holes) { index ->
             HoleButton(
@@ -92,6 +95,6 @@ fun HoleButton(onClick: () -> Unit) {
         shape = CircleShape,
         modifier = Modifier.size(90.dp)
     ) {
-        Text("Mole", fontSize = 16.sp)
+        Text("M", fontSize = 16.sp)
     }
 }
