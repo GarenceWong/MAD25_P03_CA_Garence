@@ -20,6 +20,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.CircleShape
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -87,9 +89,9 @@ fun MoleGrid(onHoleClick: (Int) -> Unit) {
 fun HoleButton(onClick: () -> Unit) {
     Button(
         onClick = onClick,
-        shape = MaterialTheme.shapes.extraLarge,
-        modifier = Modifier.aspectRatio(1f)
+        shape = CircleShape,
+        modifier = Modifier.size(90.dp)
     ) {
-        Text("", fontSize = 16.sp)
+        Text("Mole", fontSize = 16.sp)
     }
 }
