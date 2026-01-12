@@ -21,6 +21,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 
 class MainActivity : ComponentActivity() {
@@ -36,6 +42,10 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun GameInterface() {
+    var score by remember { mutableIntStateOf(0) }
+    var timeLeft by remember { mutableIntStateOf(30) }
+    var highScore by remember { mutableIntStateOf(0) }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
@@ -61,9 +71,25 @@ fun GameInterface() {
                 .fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(250.dp))
+            // for current score and time
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Score: $score", fontSize = 30.sp)
+                Text("Time: $timeLeft", fontSize = 30.sp)
+            }
+
+            Spacer(modifier = Modifier.height(44.dp))
+
+            // For the High score
+            Text("High Score: $highScore", fontSize = 30.sp)
+
+            Spacer(modifier = Modifier.height(44.dp))
+
             MoleGrid(
                 onHoleClick = { }
+
             )
         }
     }
@@ -93,6 +119,10 @@ fun HoleButton(onClick: () -> Unit) {
     Button(
         onClick = onClick,
         shape = CircleShape,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color(0xFF7A5C3A),
+            contentColor = Color.White
+        ),
         modifier = Modifier.size(90.dp)
     ) {
         Text("M", fontSize = 16.sp)
