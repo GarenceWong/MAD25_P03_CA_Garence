@@ -22,12 +22,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,7 +47,35 @@ class MainActivity : ComponentActivity() {
 fun GameInterface() {
     var score by remember { mutableIntStateOf(0) }
     var timeLeft by remember { mutableIntStateOf(30) }
+    var molePosition by remember { mutableIntStateOf((0..8).random()) }
+    var isRunning by remember { mutableStateOf(false) }
+    var hasStarted by remember { mutableStateOf(false) }
     var highScore by remember { mutableIntStateOf(0) }
+
+    // Time and loop the mole moment
+    LaunchedEffect(isRunning) {
+        if (!isRunning) return@LaunchedEffect
+
+        val timerJob = launch {
+            while (isRunning && timeLeft > 0) {
+                delay(1000L)
+                timeLeft -= 1
+            }
+            if (timeLeft <= 0) {
+                isRunning = false
+            }
+        }
+
+        val mole = launch {
+            while (isRunning && timeLeft > 0) {
+                delay((700..1000).random().toLong())
+                molePosition = (0..8).random()
+            }
+        }
+
+        timerJob.join()
+        mole.cancel()
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -88,26 +119,49 @@ fun GameInterface() {
             Spacer(modifier = Modifier.height(44.dp))
 
             MoleGrid(
-                onHoleClick = { }
-
+                molePosition = molePosition,
+                isRunning = isRunning,
+                onHoleClick = { index ->
+                    if (isRunning && timeLeft > 0 && index == molePosition) {
+                        score += 1
+                    }
+                }
             )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // To Start and Restart
+            Button(
+                onClick = {
+                    score = 0
+                    timeLeft = 30
+                    molePosition = (0..8).random()
+                    isRunning = true
+                }
+            ) {
+                Text(if (hasStarted) "Restart" else "Start")
+            }
         }
     }
 }
 
 @Composable
-fun MoleGrid(onHoleClick: (Int) -> Unit) {
+fun MoleGrid(
+    molePosition: Int,
+    isRunning: Boolean,
+    onHoleClick: (Int) -> Unit
+) {
     val holes = (0..8).toList()
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         verticalArrangement = Arrangement.spacedBy(80.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = Modifier.fillMaxWidth()
     ) {
         items(holes) { index ->
             HoleButton(
+                showMole = isRunning && index == molePosition,
                 onClick = { onHoleClick(index) }
             )
         }
@@ -115,7 +169,7 @@ fun MoleGrid(onHoleClick: (Int) -> Unit) {
 }
 
 @Composable
-fun HoleButton(onClick: () -> Unit) {
+fun HoleButton(showMole: Boolean, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         shape = CircleShape,
@@ -125,6 +179,6 @@ fun HoleButton(onClick: () -> Unit) {
         ),
         modifier = Modifier.size(90.dp)
     ) {
-        Text("M", fontSize = 16.sp)
+        Text(if (showMole) "M" else "", fontSize = 16.sp)
     }
 }
