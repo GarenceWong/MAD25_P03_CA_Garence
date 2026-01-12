@@ -61,8 +61,13 @@ fun GameInterface() {
                 delay(1000L)
                 timeLeft -= 1
             }
+
             if (timeLeft <= 0) {
                 isRunning = false
+
+                if (score > highScore) {
+                    highScore = score
+                }
             }
         }
 
@@ -133,6 +138,8 @@ fun GameInterface() {
             // To Start and Restart
             Button(
                 onClick = {
+                    hasStarted = true
+
                     score = 0
                     timeLeft = 30
                     molePosition = (0..8).random()
