@@ -133,24 +133,23 @@ fun GameInterface() {
                 }
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
             // To Start and Restart
-            Button(
+            StartRestartButton(
+                hasStarted = hasStarted,
                 onClick = {
                     hasStarted = true
-
                     score = 0
                     timeLeft = 30
                     molePosition = (0..8).random()
                     isRunning = true
                 }
-            ) {
-                Text(if (hasStarted) "Restart" else "Start")
-            }
+            )
         }
     }
 }
+
 
 @Composable
 fun MoleGrid(
@@ -162,9 +161,11 @@ fun MoleGrid(
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
-        verticalArrangement = Arrangement.spacedBy(80.dp),
+        verticalArrangement = Arrangement.spacedBy(60.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 32.dp)
     ) {
         items(holes) { index ->
             HoleButton(
@@ -186,6 +187,29 @@ fun HoleButton(showMole: Boolean, onClick: () -> Unit) {
         ),
         modifier = Modifier.size(90.dp)
     ) {
-        Text(if (showMole) "M" else "", fontSize = 16.sp)
+        Text(if (showMole) "M" else "", fontSize = 36.sp)
     }
 }
+
+@Composable
+fun StartRestartButton(
+    hasStarted: Boolean,
+    onClick: () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .width(200.dp)
+            .height(56.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color(0xFF4CAF50),
+            contentColor = Color.White
+        )
+    ) {
+        Text(
+            text = if (hasStarted) "Restart" else "Start",
+            fontSize = 36.sp
+        )
+    }
+}
+
