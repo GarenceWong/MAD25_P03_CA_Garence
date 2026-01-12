@@ -29,22 +29,47 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                GameInterface()
+                AppNav()
             }
         }
     }
 }
-
 @Composable
-fun GameInterface() {
+fun AppNav() {
+    val navController = rememberNavController()
+
+    NavHost(
+        navController = navController,
+        startDestination = "game"
+    ) {
+        composable("game") {
+            GameInterface(
+                onOpenSettings = { navController.navigate("settings") }
+            )
+        }
+        composable("settings") {
+            SettingsInterface(
+                onBack = { navController.popBackStack() }
+            )
+        }
+    }
+}
+@Composable
+fun GameInterface(onOpenSettings: () -> Unit) {
     var score by remember { mutableIntStateOf(0) }
     var timeLeft by remember { mutableIntStateOf(30) }
     var molePosition by remember { mutableIntStateOf((0..8).random()) }
@@ -94,7 +119,7 @@ fun GameInterface() {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("Wack-a-Mole", style = MaterialTheme.typography.titleLarge)
-                IconButton(onClick = { }) {
+                IconButton(onClick = onOpenSettings) {
                     Icon(Icons.Filled.Settings, contentDescription = "Settings")
                 }
             }
@@ -146,6 +171,13 @@ fun GameInterface() {
                     isRunning = true
                 }
             )
+            if (!isRunning && hasStarted && timeLeft == 0) {
+                Spacer(modifier = Modifier.height(20.dp))
+                Text(
+                    text = "Game Over! Final score: $score",
+                    fontSize = 24.sp
+                )
+            }
         }
     }
 }
@@ -212,4 +244,35 @@ fun StartRestartButton(
         )
     }
 }
+
+@Composable
+fun SettingsInterface(onBack: () -> Unit) {
+    Scaffold(
+        topBar = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 44.dp)
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                }
+
+                Text("Settings", style = MaterialTheme.typography.titleLarge)
+            }
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Settings screen")
+        }
+    }
+}
+
 
