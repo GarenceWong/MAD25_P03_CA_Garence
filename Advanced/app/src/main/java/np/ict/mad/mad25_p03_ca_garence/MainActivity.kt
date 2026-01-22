@@ -3,6 +3,7 @@ package np.ict.mad.mad25_p03_ca_garence
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -18,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.NavHost
@@ -59,13 +59,29 @@ fun AppNav() {
 
         composable("game") {
             GameInterface(
+                currentUserId = currentUserId,
                 currentUsername = currentUsername,
-                onOpenSettings = { navController.navigate("settings") }
+                onOpenSettings = { navController.navigate("settings") },
+                onOpenLeaderboard = { navController.navigate("leaderboard") },
+                onLogout = {
+                    currentUserId = -1
+                    currentUsername = ""
+                    navController.navigate("auth") {
+                        popUpTo("game") { inclusive = true }
+                    }
+                }
             )
         }
 
         composable("settings") {
             SettingsInterface(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable("leaderboard") {
+            LeaderboardScreen(
+                currentUserId = currentUserId,
                 onBack = { navController.popBackStack() }
             )
         }
@@ -103,7 +119,7 @@ fun AuthScreen(
                 .fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(60.dp))
+            Spacer(modifier = Modifier.height(80.dp))
 
             Column(
                 modifier = Modifier
@@ -113,29 +129,33 @@ fun AuthScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Wack", fontSize = 60.sp)
-                    Text("a", fontSize = 60.sp)
-                    Text("Mole", fontSize = 60.sp)
+                    Text("Wack", fontSize = 80.sp)
+                    Text("a", fontSize = 80.sp)
+                    Text("Mole", fontSize = 80.sp)
                 }
 
-                Spacer(modifier = Modifier.height(60.dp))
+                Spacer(modifier = Modifier.height(80.dp))
 
-                OutlinedTextField(
+                TextField(
                     value = username,
                     onValueChange = { username = it },
                     label = { Text("Username") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(0.9f)
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .border(2.dp, Color.Black)
                 )
 
-                OutlinedTextField(
+                TextField(
                     value = password,
                     onValueChange = { password = it },
                     label = { Text("Password / PIN") },
-                    visualTransformation = PasswordVisualTransformation(),
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(0.9f)
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .border(2.dp, Color.Black)
                 )
+
 
                 if (message.isNotBlank()) {
                     Text(message, color = MaterialTheme.colorScheme.error, fontSize = 16.sp)
@@ -222,9 +242,16 @@ fun AuthScreen(
 
 @Composable
 fun GameInterface(
+    currentUserId: Int,
     currentUsername: String,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    onOpenLeaderboard: () -> Unit,
+    onLogout: () -> Unit
 ) {
+    val context = LocalContext.current
+    val db = remember { AppDatabase.getInstance(context) }
+    val scope = rememberCoroutineScope()
+
     var score by remember { mutableIntStateOf(0) }
     var timeLeft by remember { mutableIntStateOf(30) }
     var molePosition by remember { mutableIntStateOf((0..8).random()) }
@@ -232,7 +259,7 @@ fun GameInterface(
     var hasStarted by remember { mutableStateOf(false) }
     var highScore by remember { mutableIntStateOf(0) }
 
-    // Time and loop the mole moment
+    // Time and loop the mole movement
     LaunchedEffect(isRunning) {
         if (!isRunning) return@LaunchedEffect
 
@@ -245,6 +272,18 @@ fun GameInterface(
             if (timeLeft <= 0) {
                 isRunning = false
                 if (score > highScore) highScore = score
+
+                if (currentUserId != -1) {
+                    scope.launch {
+                        db.scoreDao().insertScore(
+                            ScoreEntity(
+                                userId = currentUserId,
+                                score = score,
+                                timestamp = System.currentTimeMillis()
+                            )
+                        )
+                    }
+                }
             }
         }
 
@@ -328,6 +367,43 @@ fun GameInterface(
                     isRunning = true
                 }
             )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            //leaderboard
+            Button(
+                onClick = onOpenLeaderboard,
+                modifier = Modifier
+                    .width(200.dp)
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF2196F3),
+                    contentColor = Color.White
+                )
+            ) {
+                Text(
+                    text = "Leaderboard",
+                    fontSize = 24.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Button(
+                onClick = onLogout,
+                modifier = Modifier
+                    .width(200.dp)
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.Red,
+                    contentColor = Color.White
+                )
+            ) {
+                Text(
+                    text = "Logout",
+                    fontSize = 24.sp
+                )
+            }
 
             if (!isRunning && hasStarted && timeLeft == 0) {
                 Spacer(modifier = Modifier.height(20.dp))
