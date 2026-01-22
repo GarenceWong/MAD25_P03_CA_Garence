@@ -13,9 +13,11 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,28 +26,20 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.security.MessageDigest
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
-            MaterialTheme {
-                AppNav()
-            }
-        }
+        setContent { MaterialTheme { AppNav() } }
     }
 }
 
 @Composable
 fun AppNav() {
     val navController = rememberNavController()
-
-    // Room db (single instance)
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val db = remember { AppDatabase.getDatabase(context) }
-
-    // "logged in user"
-    var currentUserId by remember { mutableIntStateOf(-1) }
+    var currentUserId by rememberSaveable { mutableIntStateOf(-1) }
+    var currentUsername by rememberSaveable { mutableStateOf("") }
 
     NavHost(
         navController = navController,
@@ -53,9 +47,9 @@ fun AppNav() {
     ) {
         composable("auth") {
             AuthScreen(
-                db = db,
-                onAuthSuccess = { userId ->
+                onSignedIn = { userId, username ->
                     currentUserId = userId
+                    currentUsername = username
                     navController.navigate("game") {
                         popUpTo("auth") { inclusive = true }
                     }
@@ -65,8 +59,7 @@ fun AppNav() {
 
         composable("game") {
             GameInterface(
-                db = db,
-                currentUserId = currentUserId,
+                currentUsername = currentUsername,
                 onOpenSettings = { navController.navigate("settings") }
             )
         }
@@ -81,14 +74,15 @@ fun AppNav() {
 
 @Composable
 fun AuthScreen(
-    db: AppDatabase,
-    onAuthSuccess: (Int) -> Unit
+    onSignedIn: (userId: Int, username: String) -> Unit
 ) {
+    val context = LocalContext.current
+    val db = remember { AppDatabase.getInstance(context) }
+    val scope = rememberCoroutineScope()
+
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
-    var loading by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
@@ -106,110 +100,129 @@ fun AuthScreen(
         Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .padding(16.dp)
                 .fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            OutlinedTextField(
-                value = username,
-                onValueChange = {
-                    username = it
-                    message = ""
-                },
-                label = { Text("Username") },
-                modifier = Modifier.fillMaxWidth()
-            )
+            Spacer(modifier = Modifier.height(60.dp))
 
-            OutlinedTextField(
-                value = password,
-                onValueChange = {
-                    password = it
-                    message = ""
-                },
-                label = { Text("Password / PIN") },
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            if (message.isNotBlank()) {
-                Text(message, color = Color.Red, fontSize = 16.sp)
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Button(
-                    onClick = {
-                        if (username.isBlank() || password.isBlank()) {
-                            message = "Please fill in username and password."
-                            return@Button
-                        }
-
-                        loading = true
-                        scope.launch {
-                            val user = db.userDao().signIn(username.trim(), password)
-                            loading = false
-
-                            if (user != null) {
-                                onAuthSuccess(user.userId)
-                            } else {
-                                message = "Invalid username or password."
-                            }
-                        }
-                    },
-                    enabled = !loading,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Sign In")
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("Wack", fontSize = 60.sp)
+                    Text("a", fontSize = 60.sp)
+                    Text("Mole", fontSize = 60.sp)
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.height(60.dp))
 
-                Button(
-                    onClick = {
-                        if (username.isBlank() || password.isBlank()) {
-                            message = "Please fill in username and password."
-                            return@Button
-                        }
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = { username = it },
+                    label = { Text("Username") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(0.9f)
+                )
 
-                        loading = true
-                        scope.launch {
-                            val existing = db.userDao().getUserByUsername(username.trim())
-                            if (existing != null) {
-                                loading = false
-                                message = "Username already exists. Try another."
-                                return@launch
-                            }
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Password / PIN") },
+                    visualTransformation = PasswordVisualTransformation(),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(0.9f)
+                )
 
-                            val newId = db.userDao().insertUser(
-                                UserEntity(username = username.trim(), password = password)
-                            ).toInt()
+                if (message.isNotBlank()) {
+                    Text(message, color = MaterialTheme.colorScheme.error, fontSize = 16.sp)
+                }
 
-                            loading = false
-                            onAuthSuccess(newId)
-                        }
-                    },
-                    enabled = !loading,
-                    modifier = Modifier.weight(1f)
+                Row(
+                    modifier = Modifier.fillMaxWidth(0.9f),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Sign Up")
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                val u = username.trim()
+                                val p = password.trim()
+
+                                if (u.isBlank() || p.isBlank()) {
+                                    message = "Please fill in username and password."
+                                    return@launch
+                                }
+
+                                val hashed = hashPassword(p)
+                                val user = db.userDao().signIn(u, hashed)
+
+                                if (user != null) {
+                                    message = ""
+                                    onSignedIn(user.userId, user.username)
+                                } else {
+                                    message = "Invalid username or password."
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF4CAF50),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text("Sign In")
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                val u = username.trim()
+                                val p = password.trim()
+
+                                if (u.isBlank() || p.isBlank()) {
+                                    message = "Please fill in username and password."
+                                    return@launch
+                                }
+
+                                val existing = db.userDao().getUserByUsername(u)
+                                if (existing != null) {
+                                    message = "Username already exists. Please sign in."
+                                    return@launch
+                                }
+
+                                val hashed = hashPassword(p)
+                                val newId = db.userDao()
+                                    .insertUser(UserEntity(username = u, passwordHash = hashed))
+                                    .toInt()
+
+                                message = ""
+                                onSignedIn(newId, u)
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF4CAF50),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text("Sign Up")
+                    }
                 }
             }
 
-            if (loading) {
-                Spacer(modifier = Modifier.height(10.dp))
-                CircularProgressIndicator()
-            }
+            Spacer(modifier = Modifier.weight(1f))
         }
     }
 }
 
 @Composable
 fun GameInterface(
-    db: AppDatabase,
-    currentUserId: Int,
+    currentUsername: String,
     onOpenSettings: () -> Unit
 ) {
     var score by remember { mutableIntStateOf(0) }
@@ -217,18 +230,7 @@ fun GameInterface(
     var molePosition by remember { mutableIntStateOf((0..8).random()) }
     var isRunning by remember { mutableStateOf(false) }
     var hasStarted by remember { mutableStateOf(false) }
-
-    // show personal best from Room
     var highScore by remember { mutableIntStateOf(0) }
-    val scope = rememberCoroutineScope()
-
-    // load high score once when entering game / when user changes
-    LaunchedEffect(currentUserId) {
-        if (currentUserId > -1) {
-            val best = db.scoreDao().getUserBest(currentUserId) ?: 0
-            highScore = best
-        }
-    }
 
     // Time and loop the mole moment
     LaunchedEffect(isRunning) {
@@ -242,21 +244,7 @@ fun GameInterface(
 
             if (timeLeft <= 0) {
                 isRunning = false
-
-                // save score to DB when game ends
-                if (currentUserId > -1) {
-                    scope.launch {
-                        db.scoreDao().insertScore(
-                            ScoreEntity(
-                                userId = currentUserId,
-                                score = score,
-                                timestamp = System.currentTimeMillis()
-                            )
-                        )
-                        val best = db.scoreDao().getUserBest(currentUserId) ?: 0
-                        highScore = best
-                    }
-                }
+                if (score > highScore) highScore = score
             }
         }
 
@@ -296,6 +284,11 @@ fun GameInterface(
                 .fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            if (currentUsername.isNotBlank()) {
+                Text("User: $currentUsername", fontSize = 18.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             // for current score and time
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -423,7 +416,6 @@ fun SettingsInterface(onBack: () -> Unit) {
                 IconButton(onClick = onBack) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
-
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Settings", style = MaterialTheme.typography.titleLarge)
             }
@@ -438,4 +430,9 @@ fun SettingsInterface(onBack: () -> Unit) {
             Text("Settings screen")
         }
     }
+}
+
+private fun hashPassword(raw: String): String {
+    val bytes = MessageDigest.getInstance("SHA-256").digest(raw.toByteArray())
+    return bytes.joinToString("") { "%02x".format(it) }
 }
