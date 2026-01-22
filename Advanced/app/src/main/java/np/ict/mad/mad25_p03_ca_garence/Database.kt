@@ -13,8 +13,6 @@ import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-
-// Entities
 @Entity(
     tableName = "users",
     indices = [Index(value = ["username"], unique = true)]
@@ -44,8 +42,12 @@ data class ScoreEntity(
     val timestamp: Long
 )
 
+data class LeaderboardRow(
+    val userId: Int,
+    val username: String,
+    val bestScore: Int
+)
 
-//DAO
 @Dao
 interface UserDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
@@ -65,10 +67,21 @@ interface ScoreDao {
 
     @Query("SELECT MAX(score) FROM scores WHERE userId = :userId")
     suspend fun getPersonalBest(userId: Int): Int?
+
+    @Query(
+        """
+    SELECT u.userId AS userId,
+           u.username AS username,
+           MAX(s.score) AS bestScore
+    FROM users u
+    INNER JOIN scores s ON s.userId = u.userId
+    GROUP BY u.userId, u.username
+    ORDER BY bestScore DESC, username ASC
+"""
+    )
+    suspend fun getLeaderboard(): List<LeaderboardRow>
 }
 
-
-// Room Database
 @Database(
     entities = [UserEntity::class, ScoreEntity::class],
     version = 1,
